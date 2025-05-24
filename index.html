@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPA & CGPA Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+    h2, h3 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #ccc;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>K. Ramakrishnan College of Technology</h2>
+    <h3>AI & ML - GPA / CGPA Calculator</h3>
+
+    <label for="studentName">Student Name</label>
+    <input type="text" id="studentName" placeholder="Enter full name" />
+
+    <label for="registerNumber">Register Number</label>
+    <input type="text" id="registerNumber" placeholder="Enter register number" />
+
+    <label for="mode">Calculation Mode</label>
+    <select id="mode">
+      <option value="fresh">Fresh Calculation</option>
+      <option value="any">Any</option>
+    </select>
+
+    <label for="semester">Select Semester</label>
+    <select id="semester"></select>
+
+    <div id="subjectsContainer"></div>
+
+    <button onclick="calculateGPA()">Calculate GPA</button>
+    <button onclick="calculateCGPA()">Calculate CGPA</button>
+    <button id="mailButton" onclick="sendMailPrompt()" disabled>Mail Results</button>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const semesterSubjects = {
+      1: [
+        ["C Programming Laboratory", 1.5],
+        ["Physics and Chemistry Laboratory", 1.5],
+        ["Mathematics I", 4],
+        ["Basic Electrical, Electronics and Measurement Engineering", 3],
+        ["Problem Solving and Fundamental of C Programming", 3],
+        ["Engineering Chemistry", 3],
+        ["Engineering Physics", 3],
+        ["Communicative English", 3],
+      ],
+      2: [
+        ["Python Programming Laboratory", 1.5],
+        ["Engineering Practices Laboratory", 1.5],
+        ["Computational Thinking Using Python", 3],
+        ["Physics for Information Science", 3],
+        ["Introduction to Artificial Intelligence", 3],
+        ["Mathematics II", 4],
+        ["Engineering Graphics", 4],
+        ["Professional Skills I", 1],
+        ["Technical English", 3],
+      ],
+      3: [
+        ["Fundamentals of OS", 4],
+        ["Data Base Management System", 4],
+        ["Data Structures and Algorithm", 4],
+        ["Data Structure and Algorithms Laboratory", 5],
+        ["Data Base Management System Laboratory", 1.5],
+        ["Transforms and Partial Differential Equations", 4],
+        ["Professional Skills II", 1],
+        ["Object Oriented Programming", 3],
+        ["Object Oriented Programming Laboratory", 1.5],
+      ],
+      4: [
+        ["Environmental Science and Engineering", 3],
+        ["Professional Skills III", 1],
+        ["Probability and Statistics", 4],
+        ["Computer Architecture", 3],
+        ["Machine Learning Techniques", 3],
+        ["Data Warehousing and Data Mining", 3],
+        ["Computer Networks", 4],
+        ["Machine Learning Laboratory", 1.5],
+        ["Data Warehousing and Data Mining Laboratory", 1.5],
+      ],
+      5: [
+        ["Computer Vision and Image Processing", 3],
+        ["Internet of Things", 3],
+        ["Advanced Machine Learning", 3],
+        ["Exploratory data Analysis", 4],
+        ["Advanced Machine Learning Laboratory", 2],
+        ["Internet of Things Laboratory", 2],
+        ["Design Project I", 1],
+        ["Information Security", 3],
+        ["Professional Skills IV", 1],
+        ["Discrete Mathematics", 4],
+      ],
+      6: [
+        ["Professional Communication Laboratory", 1],
+        ["Feature Selection for Machine Learning", 3],
+        ["Programming in JAVA", 2],
+        ["Big Data Analytics", 3],
+        ["Deep Learning", 3],
+        ["Design Project II", 1],
+        ["Deep Learning Laboratory", 2],
+        ["Big Data Analytics Laboratory", 2],
+        ["Comprehension", 2],
+        ["Fuzzy Logic and Expert Systems", 4],
+      ],
+      7: [
+        ["Solid Waste Management", 2],
+        ["Cloud Computing and Distributed Systems", 3],
+        ["Reinforcement Learning", 3],
+        ["Reinforcement Learning Laboratory", 2],
+        ["Design Project III", 1],
+        ["Software Engineering", 3],
+      ],
+      8: [
+        ["High Performance Computing", 3],
+        ["Disaster Management", 2],
+        ["Internship", 2],
+        ["Project Work", 8],
+      ],
+    };
+
+    const gradeMap = { "O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, "C": 5, "F": 0 };
+    let gpas = {}; // Track GPA by semester
+
+    function loadSemesters() {
+      const semSel = document.getElementById("semester");
+      semSel.innerHTML = "";
+      for (let i = 1; i <= 8; i++) {
+        let opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = `Semester ${i}`;
+        semSel.appendChild(opt);
+      }
+    }
+
+    document.getElementById("semester").addEventListener("change", showSubjects);
+    document.getElementById("mode").addEventListener("change", () => {
+      gpas = {};
+      document.getElementById("results").innerHTML = "";
+    });
+
+    function showSubjects() {
+      const sem = parseInt(document.getElementById("semester").value);
+      const subjects = semesterSubjects[sem];
+      const container = document.getElementById("subjectsContainer");
+      container.innerHTML = "";
+      subjects.forEach(([subject, credit], i) => {
+        container.innerHTML += `
+          <label>${subject} (Credits: ${credit})</label>
+          <select data-credit="${credit}" class="gradeSelect">
+            <option value="">Select Grade</option>
+            <option value="O">O</option>
+            <option value="A+">A+</option>
+            <option value="A">A</option>
+            <option value="B+">B+</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="F">F</option>
+          </select>
+        `;
+      });
+    }
+
+    function calculateGPA() {
+      const sem = parseInt(document.getElementById("semester").value);
+      if (gpas[sem]) {
+        alert("Semester already entered. Use edit if needed.");
+        return;
+      }
+      const selects = document.querySelectorAll(".gradeSelect");
+      let totalCredits = 0;
+      let weightedSum = 0;
+      let resultHTML = `<h4>Semester ${sem}</h4><table><tr><th>Subject</th><th>Credits</th><th>Grade</th><th>Grade Point</th><th>Percentage</th><th>Result Status</th></tr>`;
+      const subjects = semesterSubjects[sem];
+
+      selects.forEach((sel, i) => {
+        const grade = sel.value;
+        const [subject, credit] = subjects[i];
+        const gp = gradeMap[grade] || 0;
+        totalCredits += credit;
+        weightedSum += gp * credit;
+        const percentage = gp * 10;
+        const status = gp > 0 ? "PASS" : "FAIL";
+        resultHTML += `<tr><td>${subject}</td><td>${credit}</td><td>${grade}</td><td>${gp}</td><td>${percentage}%</td><td>${status}</td></tr>`;
+      });
+
+      resultHTML += `</table>`;
+      const gpa = (weightedSum / totalCredits).toFixed(2);
+      gpas[sem] = parseFloat(gpa);
+      resultHTML += `<p><strong>GPA for Semester ${sem}:</strong> ${gpa}</p>`;
+      document.getElementById("results").innerHTML += resultHTML;
+      document.getElementById("mailButton").disabled = false;
+    }
+
+    function calculateCGPA() {
+      const values = Object.values(gpas);
+      if (values.length === 0) return alert("No GPA values to compute CGPA");
+      const sum = values.reduce((a,b) => a + b, 0);
+      const cgpa = (sum / values.length).toFixed(2);
+      document.getElementById("results").innerHTML += `<p><strong>CGPA:</strong> ${cgpa}</p>`;
+      document.getElementById("mailButton").disabled = false;
+    }
+
+    function sendMailPrompt() {
+      const email = prompt("Enter Email to Send Results:");
+      if (!email || !email.includes("@")) return alert("Invalid Email");
+      alert("Mailing functionality would send to: (Currently Unavailable...) " + email);
+    }
+
+    loadSemesters();
+    showSubjects();
+  </script>
+</body>
+</html>
